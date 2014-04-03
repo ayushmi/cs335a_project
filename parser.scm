@@ -1,6 +1,6 @@
 ;;Parser Function;;
 
-(load "~/Documents/Compilers/lexer.scm")
+(load "~/Documents/Compilers/project/lexer.scm")
 
 ;;const;;
 (define (const? expr)
