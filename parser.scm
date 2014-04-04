@@ -20,14 +20,45 @@
   (list 'const (car (cdr expr)))
 )
 
+
 ;;define;;
 (define (define? expr)
+  (and (pair? sexpr)(equal? (car sexpr) 'define)(pair? (cdr sexpr))(pair? (cddr sexpr)) (or (and (var? (cadr sexpr)) (null? (cdddr sexpr))) (and (list? (cadr sexpr)) (var? (caadr sexpr)))))
+)
+
+(define (parse-define expr)
+  (list 'define (parse (cadr expr)) (parse ( ))) ;;;;; include expand also
+)
+
+
+;;cond;;
+(define (cond? expr)
+  (and (pair? sexpr) (equal? (car sexpr) 'cond) (pair? (cdr sexpr)) (not (null? (cdr sexpr))) (cond?-helper (cdr sexpr)))))
+)
+(define (parse-cond expr)
   ()
 )
 
-;(define (define? expr)
-;  (list 'define (parse (cadr expr)) (parse ( ))) ;;;;;doubt
-;)
+
+;;if;;
+(define (if expr)
+  (and (pair? sexpr) (equal? (car sexpr) 'if) (not (null? (cdr sexpr)))(not (null? (cddr sexpr)))(null? (cdddr sexpr)))
+)
+
+(define (parse-if expr)
+  ()
+)
+
+;;ifelse;;
+(define (ifelse? expr)
+  (and (pair? sexpr) (equal? (car sexpr) 'if) (not (null? (cdr sexpr)))(not (null? (cddr sexpr)))(not (null? (cdddr sexpr)))(null? (cddddr sexpr)))
+)
+(define (parse-ifelse expr)
+  ()
+)
+
+
+
 
 ;;or;;
 (define (or? expr)
@@ -51,9 +82,12 @@
    ((const? expr) (parse-const expr))
    ((quote? expr) (parse-quote expr))
   ; ((var? expr) (parse-var expr))
-  ; ((define? expr) (parse-define expr))
-   ((or? expr) (parse-or expr))
+    ((define? expr) (parse-define expr))
+    ((or? expr) (parse-or expr))
    ;((and? expr) (parse-and expr))
+   ((if? expr) (parse-if expr))
+   ((ifelse? expr) (parse-ifelse expr))
+   ((cond? expr) (parse-cond expr))
    (else (display "Doesn't fit any category"))
    )
 )
