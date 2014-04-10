@@ -9,3 +9,4 @@ lexer.scm is the lexer code which defines 'tokens' function, 'tokens' takes the 
 
 parser.scm is the parser file which defines 'parser' function , 'parser' takes the list containing tokens as input and outputs the parse tree in form of recursive lists.
 
+code_gen.scm is the code generation file which generates mips code for the input parsed code.
