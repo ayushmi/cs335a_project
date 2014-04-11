@@ -1,4 +1,4 @@
-(load "tests-driver.scm")
+;(load "tests-driver.scm")
 
 
 
@@ -59,26 +59,26 @@
   )
 
 (define unique-label
-  (let ([count 0])
+  (let ((count 0))
     (lambda ()
-      (let ([L (string->symbol (format "Label_~s" count))])
+      (let ((L (string->symbol (format "Label_~s" count))))
         (set! count (add1 count))
         L))))
 
 (define (emit-cond E sp env)
   (begin
-    (let ([true-branch (unique-label)]
-          [false-branch (unique-label)]
-          [end-if (unique-label)]
-          )
-      (emit-expr (car (cdr E)))
-      (emit "beq $a0 $0 ~a" true-branch)
-      (emit "~a : \n" false-branch)
-      (emit-expr (car (cdr (cdr (cdr  E)))))
-      (emit "j ~a" end-if)
-      (emit "~a : \n" true-branch)
-      (emit-expr (car (cdr (cdr E))))
-      (emit "~a :\n" end-if)
+    (let ((true-branch (unique-label))
+          (false-branch (unique-label))
+          (end-if (unique-label))
+        )
+        (emit-expr (car (cdr E)))
+        (emit "beq $a0 $0 ~a" true-branch)
+        (emit "~a : \n" false-branch)
+        (emit-expr (car (cdr (cdr (cdr  E)))))
+        (emit "j ~a" end-if)
+        (emit "~a : \n" true-branch)
+        (emit-expr (car (cdr (cdr E))))
+        (emit "~a :\n" end-if)
       )
     )
   )
@@ -89,25 +89,25 @@
 (define (emit-let E sp env)
   (define (sub-emitlet bindings sp new-env)
     (cond
-      [(empty? (cadr E)) (emit-expr (cddr E))]
-      [else
-        (let ([b (car bindings)])
+      ((empty? (cadr E)) (emit-expr (cddr E)))
+      (else
+        (let ((b (car bindings)))
             (emit-expr (cadr b) sp env)
             (emit-stack-save sp)
             (sub-emitlet (cdr bindings)
                        (next-stack-index sp)
-                       (extend-env (cadr b) sp new-env)))])
+                     (extend-env (cadr b) sp new-env)))))
       )
- (sub-emitlet((cadr E) sp env))
-  )
+  (sub-emitlet((cadr E) sp env))
+)
 
 (define (lookup var env)
   (cdr (assv var env))
-  )
+)
 (define (emit-var-ref env vname)
   (cond
-    [(emit-stack-load (lookup vname env))]
-    [else (display "display Error-->DHRUV" )]
+    ((emit-stack-load (lookup vname env)))
+    (else (display "display Error-->DHRUV" ))
     )
   )
 (define (emit-bin-op E sp env)
