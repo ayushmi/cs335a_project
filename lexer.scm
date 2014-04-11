@@ -24,7 +24,7 @@
   (cond
     ((string->number sym) `(number, (string->number sym)))
     ((equal? sym "define") '(symbol define))
-    ((equal? sym "if") '(symbol, if))
+    ((equal? sym "if") '(symbol if))
     ((equal? sym "lambda") '(symbol lambda))
     ((equal? sym "or") '(symbol or))
     (else `(symbol, (string->symbol sym)))

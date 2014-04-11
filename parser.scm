@@ -106,21 +106,37 @@
 
 
 ;;if;;
-;(define (if expr)
-;  (and (pair? expr) (equal? (car expr) 'if) (not (null? (cdr expr)))(not (null? (cddr expr)))(null? (cdddr expr)))
-;)
+(define (if? expr)
+  (and (pair? expr) (equal? (car expr) 'if) (not (null? (cdr expr)))(not (null? (cddr expr)))(null? (cdddr expr)))
+)
 
-;(define (parse-if expr)
-;  ()
-;)
+(define (parse-if expr)
+  (list 'if (parse (cadr expr)) (parse (caddr expr)) `(const ,void-object))
+)
 
 ;;ifelse;;
-;(define (ifelse? expr)
-;  (and (pair? expr) (equal? (car expr) 'if) (not (null? (cdr expr)))(not (null? (cddr expr)))(not (null? (cdddr expr)))(null? (cddddr expr)))
-;)
-;(define (parse-ifelse expr)
-;  ()
-;)
+(define (ifelse? expr)
+  (and (pair? expr) (equal? (car expr) 'if) (not (null? (cdr expr)))(not (null? (cddr expr)))(not (null? (cdddr expr)))(null? (cddddr expr)))
+)
+(define (parse-ifelse expr)
+  (list 'if (parse (cadr expr)) (parse (caddr expr)) (parse (cadddr expr)) )
+)
+
+;;let;;
+(define let?
+  (lambda (sexpr)
+    (and (pair? sexpr) (equal? (car sexpr) 'let) (pair? (cdr sexpr))(pair? (cddr sexpr))(or (null? (cadr sexpr)) (and (pair? (cadr sexpr)) (andmap (lambda(x)
+                                                                                                                       (and (pair? x)
+                                                                                                                            (= (length x) 2)))
+                                                                                                                     (cadr sexpr)))))))
+(define expand-let
+ (lambda (sexpr)
+   (let ((args (map car (cadr sexpr)))
+         (vals (map cadr (cadr sexpr)))
+         (body (cddr sexpr)))
+     (cond ((and (null? args) (null? vals)) `((lambda ,args ,@body) ))
+           ((and (not (null? args)) (not (null? vals))) `((lambda ,args ,@body) ,@vals ))
+           (else "error")))))
 
 
 ;;;begin
@@ -139,6 +155,7 @@
           ((null? (cdr sexpr)) (car sexpr))
           (else `(begin ,@sexpr) ))))
 
+(define void-object (if #f #t))
 
 ;;or;;
 (define (or? expr)
@@ -167,9 +184,9 @@
     ((lambda? expr) (parse-lambda expr))
     ((begin? expr) (parse-begin expr))
    ;((and? expr) (parse-and expr))
-  ; ((if? expr) (parse-if expr))
-  ; ((ifelse? expr) (parse-ifelse expr))
-  ; ((cond? expr) (parse-cond expr))
+   ((if? expr) (parse-if expr))
+   ((ifelse? expr) (parse-ifelse expr))
+   ((cond? expr) (parse-cond expr))
    (else (display "Doesn't fit any category"))
    )
 )
