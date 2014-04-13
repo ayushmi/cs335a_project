@@ -97,12 +97,29 @@
 
 
 ;;cond;;
-;(define (cond? expr)
-;(and (pair? expr) (equal? (car expr) 'cond) (pair? (cdr expr)) (not (null? (cdr expr))) (cond?-helper (cdr expr))))
+(define (cond? expr)
+  (and (pair? expr) (equal? (car expr) 'cond) (pair? (cdr expr)) (not (null? (cdr expr))) (cond?-helper (cdr expr))))
 
-;(define (parse-cond expr)
-;  ()
-;)
+(define cond?-helper
+  (lambda (sexpr)
+    (and (pair? sexpr) (not (null? sexpr)) (pair? (car sexpr)) (not (null? (car sexpr)))
+         (or (and (equal? (caar sexpr) 'else) (pair? (cdar sexpr)) (not (null? (cdar sexpr))) (null? (cdr sexpr)))
+             (not (equal? (caar sexpr) 'else)))
+         (or (null? (cdr sexpr)) (cond?-helper (cdr sexpr))))))
+
+(define expand-cond-helper
+  (lambda (sexpr)
+    (cond ((null? (cdr sexpr))
+           (if (equal? (caar sexpr) 'else)
+               (beginify (cdar sexpr))
+               `(if ,(caar sexpr) ,(beginify (cdar sexpr)))))
+          (else `(if ,(caar sexpr) ,(beginify (cdar sexpr)) ,(expand-cond-helper (cdr sexpr)))))
+     ))
+
+(define expand-cond
+  (lambda (sexpr)
+    (expand-cond-helper (cdr sexpr))))
+
 
 
 ;;if;;
@@ -164,29 +181,79 @@
 
 (define (parse-or expr)
   (cond ((null? (cdr expr)) (parse '#f))
+        ((null? (cddr expr)) (list 'or (parse C)) )
         (else (list 'or (map parse (cdr expr))))
   )
 )
 
-;;and;;
-;(define (and? expr)
-;  ()
+
+;(define parse-or
+;  (letrec ((loop
+;            (lambda (expr,ans)
+;              (if (null? (cdr expr))
+;                  (parse '#f)
+;                  (parse (cadr expr))
+;                (loop1 (parse-or (list '('or) (cddr expr)))))))))
+;    (lambda expr (loop expr '()))))
+;
+;(define (loop1 out)
+;  (loop)
 ;)
+
+;;display;;
+(define (display? expr)
+  (and (pair? expr) (equal? (car expr) 'display))
+)
+(define (parse-display expr)
+  (cond ((string? (cadr expr)) (list 'display (cdr expr)))
+        (else (list 'display (parse (cadr expr))))
+  )
+)
+
+;;and;;
+(define (and? expr)
+    (and (pair? expr)(equal? (car expr) 'and))
+)
+
+
+(define expand-and
+ (lambda (sexpr)
+   (cond ((null? (cdr sexpr)) '#t)
+         ((null? (cddr sexpr)) (cadr sexpr))
+         (else (expand-and-helper (cdr sexpr))))))
+
+(define expand-and-helper
+  (lambda (sexpr)
+    (cond ((null? (cddr sexpr)) `(if ,(parse (car sexpr)) , (parse (cadr sexpr)) #f))
+           (else `(if ,(parse (car sexpr)) ,(expand-and-helper (cdr sexpr)) #f)
+           ))))
 
 ;;parse function;;
 (define (parse expr)
   (cond
+
+   ((let? expr) (expand-let expr))
    ((const? expr) (parse-const expr))
    ((quote? expr) (parse-quote expr))
    ((var? expr) (parse-var expr))
-    ((define? expr) (parse-define expr))
-    ((or? expr) (parse-or expr))
-    ((lambda? expr) (parse-lambda expr))
-    ((begin? expr) (parse-begin expr))
-   ;((and? expr) (parse-and expr))
+   ((define? expr) (parse-define expr))
+   ((or? expr) (parse-or expr))
+   ((lambda? expr) (parse-lambda expr))
+   ((begin? expr) (parse-begin expr))
+   ((and? expr) (expand-and expr))
    ((if? expr) (parse-if expr))
    ((ifelse? expr) (parse-ifelse expr))
-   ((cond? expr) (parse-cond expr))
+   ((cond? expr) (expand-cond expr))
+   ((display? expr) (parse-display expr))
    (else (display "Doesn't fit any category"))
-   )
+  )
+)
+
+;;parse program;;
+(define (parse-program in out)
+  (cond
+    ((null? in) out)
+    (else `(,(append out (parse (car in))), (parse-program (cdr in) out))
+          )
+    )
 )
