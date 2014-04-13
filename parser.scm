@@ -181,7 +181,6 @@
 
 (define (parse-or expr)
   (cond ((null? (cdr expr)) (parse '#f))
-        ((null? (cddr expr)) (list 'or (parse C)) )
         (else (list 'or (map parse (cdr expr))))
   )
 )
@@ -205,7 +204,7 @@
   (and (pair? expr) (equal? (car expr) 'display))
 )
 (define (parse-display expr)
-  (cond ((string? (cadr expr)) (list 'display (cdr expr)))
+  (cond ((string? (cadr expr)) (list 'display (list 'string (cdr expr))))
         (else (list 'display (parse (cadr expr))))
   )
 )
