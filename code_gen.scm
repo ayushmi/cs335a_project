@@ -1,4 +1,5 @@
 (load "tests-driver.scm")
+(load "parser.scm")
 
 ;----------------------------------------------------------------------------------
 ; #defines
@@ -7,7 +8,7 @@
 ;----------------------------------------------------------------------------------
 ; Stack operations
 (define (emit-stack-load sp)
-  (emit " move ~s($sp), $a0" sp)
+  (emit "move ~s($sp), $a0" sp)
   )
 
 (define (next-stack-index sp)
@@ -18,8 +19,10 @@
 (define (main E)
   (define sp 100)
   (define env '())
-  (emit ".text")
+  (emit ".text\nmain:")
   (driver E sp env)
+  (emit "li $v0,10\n")
+  (emit "syscall\n")
   (collect-data-section '() 1)
 )
 
@@ -28,7 +31,7 @@
   (cond
     [(null? E) '()]
     [(null? (cdr E)) (emit-expr (car E) sp env)]
-    [else (emit-expr (car E) sp env) (driver (cdr E))]
+    [else (emit-expr (car E) sp env) (driver (cdr E) sp env)]
     )
 )
 
@@ -36,27 +39,43 @@
 ; Top level function    EMIT-EXPR
 (define (emit-expr E sp env)
   (cond
-    ((imm? E) (emit-imm E sp env))
-    ((if? E)  (emit-cond E sp env))
-    ((let? E) (emit-let E sp env))
-    ((define? E) (emit-define E sp env))
-    ((display? E) (emit-display E sp env))
-    ((equal? (car E) #\*) (emit-bin-op E sp env))
-    ((equal? (car E) #\+) (emit-bin-op E sp env))
-    ((equal? (car E) #\-) (emit-bin-op E sp env))
+    ((imm-cg? E) (emit-imm E sp env))
+    ((if-cg? E)  (emit-cond E sp env))
+    ((let-cg? E) (emit-let E sp env))
+    ((define-cg? E) (emit-define E sp env))
+    ((display-cg? E) (emit-display E sp env))
+    ((equal? (car E) '*) (emit-bin-op E sp env))
+    ((equal? (car E) '+) (emit-bin-op E sp env))
+    ((equal? (car E) '-) (emit-bin-op E sp env))
     ((equal? (car E) #\/) (emit-bin-op E sp env))
     ((equal? (car E) 'or) (emit-bin-op E sp env))
     ((equal? (car E) 'and) (emit-bin-op E sp env))
-    (else (display "hello world\n"))
+    (else (emit "~a  hello world\n" E))
     )
   )
 ;---------------------------------------------------------------------------------
 ; Code generation for program constructs
+
+(define (emit-lambda E env)
+  (lambda (label)
+    (emit-function-header label)
+    (let ([fmls (lambda-formals E)]
+          [body (lambda-body E)])
+      (let f ([fmls fmls] [si (- wordsize)] [env env])
+        (cond
+          [(empty? fmls) (emit-expr si env body)]
+          [else
+            (f (rest fmls)
+               (- si wordsize)
+               (extend-env (first fmls) si env))])))))
+
+
+
 (define (emit-imm E sp env)
   (begin
-    (emit "li $a0 ~a" (number->string(cadr E)))
+    (emit "li $a0, ~a" (number->string(cadr E)))
+    )
   )
-)
 
 (define (emit-define E sp env)
   (display "asd")
@@ -69,7 +88,7 @@
           [end-if (unique-label)]
           )
       (emit-expr (car (cadr E)))
-      (emit "beq $a0 $0 ~a" true-branch)
+      (emit "beq $a0, $0, ~a" true-branch)
       (emit "~a : \n" false-branch)
       (emit-expr (caddr (cadr E)))
       (emit "j ~a" end-if)
@@ -84,20 +103,21 @@
   (cond
     [(equal? 'string (caadr E))
      (emit "li $v0,4")
-     (emit "la $a0,~a" (collect-data-section (cadr E) 0) )
+     (emit "la $a0,~a" (collect-data-section (cadadr E) 0) )
      (emit "syscall")
-    ]
+     ]
     [(equal? 'var (caadr E))
-		(emit-var-ref env vname)
-		(emit "li	$v0, 1")
-		(emit "move $a0, $t2")
-		(emit "syscall")
-    ]
+     (emit "~a"  (cadadr E))
+     (emit-var-ref env  (cadadr E))
+     (emit "li	$v0, 1")
+     (emit "move $a0, $t2")
+     (emit "syscall")
+     ]
     [else
       (display "None of these")
-     ]
-   )
-)
+      ]
+    )
+  )
 
 (define (emit-let E sp env)
   (define (sub-emitlet bindings sp new-env)
@@ -115,53 +135,53 @@
   )
 
 (define (emit-bin-op E sp env)
-    (emit-expr (car (cdr E)))
-    (emit "sw $a0 0($sp) \n")
-    (emit "addiu $sp $sp -4 \n")
-    (emit-expr (cdr (cdr E)))
-    (emit "lw $t1 4($sp) \n")
+(emit-expr (cadr E) sp env)
+  (emit "sw $a0, 0($sp) \n")
+  (emit "addiu $sp, $sp, -4 \n")
+  (emit-expr (caddr E) sp env)
+  (emit "lw $t1, 4($sp) \n")
 
   (cond
     ;For plus
-    ((equal? (car E) #\+)
-        (emit "add $a0 $t1 $a0 \n")
-        (emit "addiu $sp $sp 4 \n")
-       )
+    ((equal? (car E) '+)
+     (emit "add $a0, $t1, $a0 \n")
+     (emit "addiu $sp, $sp, 4 \n")
+     )
 
     ;For minus
-    ((equal? (car E) #\-)
-       (emit "sub $a0 $t1 $a0 \n")
-       (emit "addiu $sp $sp 4 \n")
-       )
+    ((equal? (car E) '-)
+     (emit "sub $a0, $t1, $a0 \n")
+     (emit "addiu $sp, $sp, 4 \n")
+     )
 
     ;For mult
-    ((equal? (car E) #\*)
-       (emit "mult $t1 $a0 \n")
-       (emit "sw $a0 $LO \n")
-       (emit "addiu $sp $sp 4 \n")
-       )
+    ((equal? (car E) '*)
+     (emit "mult $t1, $a0 \n")
+     (emit "sw $a0, $LO \n")
+     (emit "addiu $sp, $sp, 4 \n")
+     )
 
     ;For div - for now only integer divisions
-    ((equal? (car E) #\/)
-       (emit "div $t1 $a0 \n")
-       (emit "sw $a0 $LO \n")
-       (emit "addiu $sp $sp 4 \n")
-       )
+    ((equal? (car E) '/)
+     (emit "div $t1, $a0 \n")
+     (emit "sw $a0, $LO \n")
+     (emit "addiu $sp, $sp, 4 \n")
+     )
 
     ;For and - for now only integer divisions
     ((equal? (car E) 'and)
-       (emit "and $a0 $t1 $a0 \n")
-       (emit "addiu $sp $sp 4 \n")
+     (emit "and $a0, $t1, $a0 \n")
+     (emit "addiu $sp, $sp, 4 \n")
 
-       )
+     )
 
     ;For or - for now only integer divisions
     ((equal? (car E) 'or)
-       (emit "or $a0 $t1 $a0 \n")
-       (emit "addiu $sp $sp 4 \n")
-       )
+     (emit "or $a0, $t1, $a0 \n")
+     (emit "addiu $sp, $sp, 4 \n")
+     )
 
-    (else (emit "Wrong Operator"))
+    (else (emit "~a Wrong Operator" E))
     )
   )
 ; Printing data section
@@ -170,17 +190,18 @@
     (lambda (arg1 arg2)
       (cond
         [(equal? arg2 0)
-          (display "0----")
+
          (let ([lab (symbol->string (unique-label))])
            (set! data-section (append data-section `(,lab)))
-           (set! data-section (append data-section `(,arg1)))
-           (set! data-section (append data-section '("\n")))
+           (set! data-section (append data-section '(:.asciiz)))
+           (set! data-section (append data-section arg1))
+           ;(set! data-section (append data-section '("\n")))
            lab
            )
          ]
         [(equal? arg2 1)
 
-          (display "1----")
+
          (cond
            [(null? data-section) '()]
            [else (display ".data\n")(emit-data-section   data-section 0)    ]
@@ -192,25 +213,19 @@
   )
 
 (define (emit-data-section arg arg2)
-
   (cond
     [(null? arg) '() ]
     [else (cond
-
-            [(equal? arg2 0) (emit ".asciiz    \"~a\" " (car arg)) (emit-data-section (cdr arg) 1)]
-            [(equal? arg2 1) (emit "\"~a\" " (car arg)) (emit-data-section (cdr arg) 1)]
+            [(equal? arg2 0) (emit "~a ~a \"~a\"" (car arg) (cadr arg) (caddr arg)) (emit-data-section (cdddr arg) 0)]
             )]
     )
   )
 
-
-
-
 ;----------------------------TOOLS-------------------------------------
 
 (define (lookup var env)
-  (cdr (assv var env))
-  )
+  (cadr (assv var env))
+ )
 (define (emit-var-ref env vname)
   (cond
     [(emit-stack-load (lookup vname env))]
@@ -231,34 +246,42 @@
 
 ;--------------------------------Code to check token value
 
-(define (let? arg)
+(define (let-cg? arg)
   (if (equal? (car arg) 'let)
     (equal? 0 0)
     (equal? 0 1)
     ))
 
-(define (if? arg)
+(define (if-cg? arg)
   (if (equal? (car arg) 'if)
     (equal? 0 0)
     (equal? 0 1)
     )
   )
 
-(define (imm? arg)
-  (if (equal? (car arg) 'var)
+(define (imm-cg? arg)
+  (if (equal? (car arg) 'const)
     (equal? 0 0)
     (equal? 0 1)
     )
   )
-(define (define? arg)
+
+(define (define-cg? arg)
   (if (equal? (car arg) 'define)
     (equal? 0 0)
     (equal? 0 1)
-    ))
+    )
+  )
 
-(define (display? arg)
+(define (display-cg? arg)
   (if (equal? (car arg) 'display)
     (equal? 0 0)
     (equal? 0 1)
     )
   )
+
+
+(define (code_gen program)
+  (define C (lexParse program))
+  (main (list (car C) (caadr C)))
+)

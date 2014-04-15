@@ -174,29 +174,78 @@
 
 (define void-object (if #f #t))
 
+;;+;;
+(define (+? expr)
+  (and (pair? expr)(equal? (car expr) '+))
+
+)
+
+(define parse+
+    (lambda (s)
+        (if (equal? s '(+))
+            '(const 0)
+            (list '+ (parse (cadr s))
+              (parse+ (append '(+) (cddr s)))
+            )
+        )
+    )
+)
+;;-;;
+(define (-? expr)
+  (and (pair? expr)(equal? (car expr) '-))
+)
+
+
+(define parse-
+    (lambda (s)
+        (if (equal? s '(-))
+            '(const 0)
+            (list '- (parse (cadr s))
+              (parse- (append '(-) (cddr s)))
+            )
+        )
+    )
+)
+
+;;*;;
+(define (*? expr)
+  (and (pair? expr)(equal? (car expr) '*))
+
+)
+
+
+(define parse*
+    (lambda (s)
+        (if (equal? s '(*))
+            '(const 1)
+            (list '* (parse (cadr s))
+              (parse* (append '(*) (cddr s)))
+            )
+        )
+    )
+)
+
 ;;or;;
 (define (or? expr)
   (and (pair? expr)(equal? (car expr) 'or))
 )
 
-(define (parse-or expr)
-  (cond ((null? (cdr expr)) (parse '#f))
-        (else (list 'or (map parse (cdr expr))))
-  )
+(define parse-or
+    (lambda (s)
+        (if (equal? s '(or))
+            (parse '#f)
+            (list 'or (parse (cadr s))
+              (parse-or (append '(or) (cddr s)))
+            )
+        )
+    )
 )
 
 
-;(define parse-or
-;  (letrec ((loop
-;            (lambda (expr,ans)
-;              (if (null? (cdr expr))
-;                  (parse '#f)
-;                  (parse (cadr expr))
-;                (loop1 (parse-or (list '('or) (cddr expr)))))))))
-;    (lambda expr (loop expr '()))))
-;
-;(define (loop1 out)
-;  (loop)
+;(define (parse-or expr)
+;  (cond ((null? (cdr expr)) (parse '#f))
+;        (else (list 'or (map parse (cdr expr))))
+;  )
 ;)
 
 ;;display;;
@@ -234,6 +283,9 @@
    ((let? expr) (expand-let expr))
    ((const? expr) (parse-const expr))
    ((quote? expr) (parse-quote expr))
+   ((+? expr) (parse+ expr))
+   ((-? expr) (parse- expr))
+   ((*? expr) (parse* expr))
    ((var? expr) (parse-var expr))
    ((define? expr) (parse-define expr))
    ((or? expr) (parse-or expr))
@@ -255,4 +307,9 @@
     (else `(,(append out (parse (car in))), (parse-program (cdr in) out))
           )
     )
+)
+
+;;Test Function ;;
+(define (lexParse program)
+    (parse-program (tokens->sexprs (tokens program)) '())
 )

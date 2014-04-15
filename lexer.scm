@@ -99,7 +99,7 @@
    ((char=? (car listinput) #\") (stringfunc (cdr listinput) '())) ; Beginning of String , take care of end of string in the corresponding function.
    ((char=? (car listinput) #\;) (comment (cdr listinput) )) ; Beginning of Comment
    ((char=? (car listinput) #\`) (cons '(quasiquote) (calc-tokens (cdr listinput))))  ;quasi quote
-   ((char=? (car listinput) #\#) (cons '(hash) (hashfunc (cdr listinput))))        ;hash
+   ((char=? (car listinput) #\#) (hashfunc (cdr listinput)))        ;hash
    ((char=? (car listinput) #\,) (cons '(comma) (calc-tokens (cdr listinput))))       ;comma
    ((char=? (car listinput) #\.) (cons '(period) (calc-tokens (cdr listinput))))      ;period
    ((char-whitespace? (car listinput)) (calc-tokens (cdr listinput)))             ;ignore whitespace not make a token out of white space
