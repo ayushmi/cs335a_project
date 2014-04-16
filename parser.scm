@@ -1,6 +1,6 @@
 ;;Parser Function;;
 
-(load "~/Documents/Compilers/project/get_expr_from_tokens.scm")
+(load "get_expr_from_tokens.scm")
 
 ;;const;;
 (define (const? expr)

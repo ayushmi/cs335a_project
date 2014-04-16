@@ -1,4 +1,4 @@
-(load "~/Documents/Compilers/project/lexer.scm")
+(load "lexer.scm")
 
 (define tokens->sexprs
   (letrec ((get-sexpr
