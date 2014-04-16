@@ -15,7 +15,7 @@
 ;----------------------------------------------------------------------------------
 ; Stack operations
 (define (emit-stack-load sp)
-  (emit "move ~s($sp), $a0" sp)
+  (emit "li $a0,~s" sp)
   )
 
 (define (next-stack-index sp)
@@ -86,8 +86,9 @@
   )
 
 (define (emit-define E sp env)
-  (display "asd")
-  )
+  (extend-global-env (cadaddr E) (cadadr E))
+)
+
 
 (define (emit-cond E sp env)
   (begin
@@ -231,8 +232,11 @@
 
 ;----------------------------TOOLS-------------------------------------
 
-(define (lookup var env)
-  (cadr (assv var env))
+ (define (lookup var env)
+   (if (equal? (assv var env) #f)
+   (cadr (assv var global-env))
+   (cadr (assv var env))
+   )
  )
 (define (emit-var-ref env vname)
   (cond
@@ -296,10 +300,10 @@
     )
   )
 
-(define (code_gen program) 
-  (define C (lexParse program)) 
-  (if (null? (cadr C)) 
-    (main (list (car C))) 
-    (main (list (car C) (caadr C))) 
-  ) 
+(define (code_gen program)
+  (define C (lexParse program))
+  (if (null? (cadr C))
+    (main (list (car C)))
+    (main (list (car C) (caadr C)))
+  )
 )
