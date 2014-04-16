@@ -5,6 +5,13 @@
 ; #defines
 (define wordsize 4)
 
+(define global-env '())
+
+(define (extend-global-env arg1 arg2) ; arg2 is function name
+  (set! global-env (cons (list arg2 arg1) global-env))
+  )
+
+
 ;----------------------------------------------------------------------------------
 ; Stack operations
 (define (emit-stack-load sp)
@@ -44,10 +51,11 @@
     ((let-cg? E) (emit-let E sp env))
     ((define-cg? E) (emit-define E sp env))
     ((display-cg? E) (emit-display E sp env))
+    ((lambda-cg? E) (emit-lambda E sp env (unique-label)))
     ((equal? (car E) '*) (emit-bin-op E sp env))
     ((equal? (car E) '+) (emit-bin-op E sp env))
     ((equal? (car E) '-) (emit-bin-op E sp env))
-    ((equal? (car E) #\/) (emit-bin-op E sp env))
+    ((equal? (car E) '/) (emit-bin-op E sp env))
     ((equal? (car E) 'or) (emit-bin-op E sp env))
     ((equal? (car E) 'and) (emit-bin-op E sp env))
     (else (emit "~a  hello world\n" E))
@@ -56,19 +64,19 @@
 ;---------------------------------------------------------------------------------
 ; Code generation for program constructs
 
-(define (emit-lambda E env)
-  (lambda (label)
-    (emit-function-header label)
-    (let ([fmls (lambda-formals E)]
-          [body (lambda-body E)])
-      (let f ([fmls fmls] [si (- wordsize)] [env env])
-        (cond
-          [(empty? fmls) (emit-expr si env body)]
-          [else
-            (f (rest fmls)
-               (- si wordsize)
-               (extend-env (first fmls) si env))])))))
+(define (emit-lambda E env label)
+    (emit-label label)
+    (extend-global-env label (cadadr E))
+    ; fetching arguments from stack
+    (emit "move ")
+    (emit "move ")
+    (driver (cadddr E) sp env)
+    (emit "jr $ra")
+    )
 
+(define (emit-label label)
+  (emit "~a : " label)
+  )
 
 
 (define (emit-imm E sp env)
@@ -281,10 +289,17 @@
   )
 
 
-(define (code_gen program)
-  (define C (lexParse program))
-  (if (null? (cadr C))
-    (main (list (car C)))
-    (main (list (car C) (caadr C)))
+(define (lambda-cg? arg)
+  (if (equal? (car arg) 'display)
+    (equal? 0 0)
+    (equal? 0 1)
+    )
   )
+
+(define (code_gen program) 
+  (define C (lexParse program)) 
+  (if (null? (cadr C)) 
+    (main (list (car C))) 
+    (main (list (car C) (caadr C))) 
+  ) 
 )
