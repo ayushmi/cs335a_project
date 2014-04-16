@@ -56,6 +56,9 @@
     ((equal? (car E) '+) (emit-bin-op E sp env))
     ((equal? (car E) '-) (emit-bin-op E sp env))
     ((equal? (car E) '/) (emit-bin-op E sp env))
+    ((equal? (car E) '=) (emit-bin-op E sp env))
+    ((equal? (car E) '>) (emit-bin-op E sp env))
+    ((equal? (car E) '<) (emit-bin-op E sp env))
     ((equal? (car E) 'or) (emit-bin-op E sp env))
     ((equal? (car E) 'and) (emit-bin-op E sp env))
     ((equal? (car E) 'var) (emit-var-ref env (cadr E)))
@@ -100,10 +103,17 @@
       (emit-expr (cadr E) sp env)
       (emit "bne $a0, $0, ~a" true-branch)
       (emit "~a : \n" false-branch)
-      (emit-expr (cadddr E) sp env)
+      (if (pair? (car (cadddr E)))
+        (driver (cadddr E) sp env)
+        (emit-expr (cadddr E) sp env)
+      )
       (emit "j ~a" end-if)
       (emit "~a : \n" true-branch)
-      (emit-expr (caddr E) sp env)
+
+      (if (pair? (car (caddr E)))
+        (driver (caddr E) sp env)
+        (emit-expr (caddr E) sp env)
+      )
       (emit "~a :\n" end-if)
       )
     )
@@ -160,6 +170,25 @@
   (emit "lw $t1, 4($sp) \n")
 
   (cond
+
+    ;For <
+    ((equal? (car E) '<)
+     (emit "slt $a0, $t1, $a0 \n")
+     (emit "addiu $sp, $sp, 4 \n")
+     )
+
+    ;For >
+    ((equal? (car E) '>)
+     (emit "sgt $a0, $t1, $a0 \n")
+     (emit "addiu $sp, $sp, 4 \n")
+     )
+
+    ;For =
+    ((equal? (car E) '=)
+     (emit "seq $a0, $t1, $a0 \n")
+     (emit "addiu $sp, $sp, 4 \n")
+     )
+
     ;For plus
     ((equal? (car E) '+)
      (emit "add $a0, $t1, $a0 \n")

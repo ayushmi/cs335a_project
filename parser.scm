@@ -232,23 +232,39 @@
     )
 )
 
+;;>;;
+(define (>? expr)
+  (and (pair? expr)(equal? (car expr) '>) (not (null? (cdr expr))))
+
+)
+
+
+(define (parse> expr)
+  (list '> (parse (cadr expr)) (parse (caddr expr)))
+)
+
+;;<;;
+(define (<? expr)
+  (and (pair? expr)(equal? (car expr) '<) (not (null? (cdr expr))))
+
+)
+
+
+(define (parse< expr)
+  (list '< (parse (cadr expr)) (parse (caddr expr)))
+)
+
 ;;=;;
 (define (=? expr)
-  (and (pair? expr)(equal? (car expr) '=))
+  (and (pair? expr)(equal? (car expr) '=) (not (null? (cdr expr))))
 
 )
 
 
-(define parse=
-    (lambda (s)
-        (if (equal? s '(=))
-            '(const 1)
-            (list '= (parse (cadr s))
-              (parse= (append '(=) (cddr s)))
-            )
-        )
-    )
+(define (parse= expr)
+  (list '= (parse (cadr expr)) (parse (caddr expr)))
 )
+
 
 ;;or;;
 (define (or? expr)
@@ -320,6 +336,8 @@
    ((-? expr) (parse- expr))
    ((*? expr) (parse* expr))
    ((=? expr) (parse= expr))
+   ((>? expr) (parse> expr))
+   ((<? expr) (parse< expr))
    ((var? expr) (parse-var expr))
    ((define? expr) (parse-define expr))
    ((or? expr) (parse-or expr))
