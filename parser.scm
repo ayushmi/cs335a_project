@@ -266,15 +266,23 @@
 
 (define expand-and
  (lambda (sexpr)
-   (cond ((null? (cdr sexpr)) '#t)
+   (cond ((null? (cdr sexpr)) '(const 1))
          ((null? (cddr sexpr)) (cadr sexpr))
          (else (expand-and-helper (cdr sexpr))))))
 
 (define expand-and-helper
   (lambda (sexpr)
-    (cond ((null? (cddr sexpr)) `(if ,(parse (car sexpr)) , (parse (cadr sexpr)) #f))
-           (else `(if ,(parse (car sexpr)) ,(expand-and-helper (cdr sexpr)) #f)
+    (cond ((null? (cddr sexpr)) `(if ,(parse (car sexpr)) , (parse (cadr sexpr)), '(const 0)))
+           (else `(if ,(parse (car sexpr)) ,(expand-and-helper (cdr sexpr)), '(const 0))
            ))))
+;;Function Call;;
+(define (funccall? expr)
+  '()
+)
+
+(define (parse-funccall expr)
+  '()
+)
 
 ;;parse function;;
 (define (parse expr)
@@ -296,6 +304,7 @@
    ((ifelse? expr) (parse-ifelse expr))
    ((cond? expr) (expand-cond expr))
    ((display? expr) (parse-display expr))
+   ((funccall? expr) (parse-funccall expr))
    (else (display "Doesn't fit any category"))
   )
 )
@@ -303,12 +312,12 @@
 ;;parse program;;
 (define (parse-program in out)
   (cond
-    ((null? in) out)
-    (else `(,(append out (parse (car in))), (parse-program (cdr in) out))
-          )
-    )
+      ((null? in) out)
+      (else (append (append out (list (parse (car in))))
+          (parse-program (cdr in) out))
+        )
+  )
 )
-
 ;;Test Function ;;
 (define (lexParse program)
     (parse-program (tokens->sexprs (tokens program)) '())

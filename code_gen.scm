@@ -24,7 +24,7 @@
 ;---------------------------------------------------------------------------------
 ; Main Function
 (define (main E)
-  (define sp 100)
+  (define sp 0)
   (define env '())
   (emit ".text\nmain:")
   (driver E sp env)
@@ -58,6 +58,7 @@
     ((equal? (car E) '/) (emit-bin-op E sp env))
     ((equal? (car E) 'or) (emit-bin-op E sp env))
     ((equal? (car E) 'and) (emit-bin-op E sp env))
+    ((equal? (car E) 'var) (emit-var-ref env (cadr E)))
     (else (emit "~a  hello world\n" E))
     )
   )
@@ -86,7 +87,7 @@
   )
 
 (define (emit-define E sp env)
-  (extend-global-env (cadaddr E) (cadadr E))
+  (extend-global-env (car (cdaddr E)) (cadadr E))
 )
 
 
@@ -96,13 +97,13 @@
           [false-branch (unique-label)]
           [end-if (unique-label)]
           )
-      (emit-expr (car (cadr E)))
-      (emit "beq $a0, $0, ~a" true-branch)
+      (emit-expr (cadr E) sp env)
+      (emit "bne $a0, $0, ~a" true-branch)
       (emit "~a : \n" false-branch)
-      (emit-expr (caddr (cadr E)))
+      (emit-expr (cadddr E) sp env)
       (emit "j ~a" end-if)
       (emit "~a : \n" true-branch)
-      (emit-expr (cadr (cadr E)))
+      (emit-expr (caddr E) sp env)
       (emit "~a :\n" end-if)
       )
     )
@@ -110,17 +111,25 @@
 
 (define (emit-display E sp env)
   (cond
+
     [(equal? 'string (caadr E))
      (emit "li $v0,4")
      (emit "la $a0,~a" (collect-data-section (cadadr E) 0) )
      (emit "syscall")
      ]
     [(equal? 'var (caadr E))
-     (emit "~a"  (cadadr E))
+     ;(emit "~a"  (cadadr E))
      (emit-var-ref env  (cadadr E))
      (emit "li	$v0, 1")
-     (emit "move $a0, $t2")
+     (emit "move $t2, $a0")
      (emit "syscall")
+     ]
+     [(pair? (cadr E))
+       (emit-expr (cadr E) sp env)
+       (emit "li	$v0, 1")
+       (emit "move $t2, $a0")
+       (emit "syscall")
+      ; (display "None of these1")
      ]
     [else
       (display "None of these")
@@ -131,7 +140,7 @@
 (define (emit-let E sp env)
   (define (sub-emitlet bindings sp new-env)
     (cond
-      [(empty? (cadr E)) (emit-expr (cddr E))]
+      [(empty? (cadr E)) (emit-expr (cddr E) sp env)]
       [else
         (let ([b (car bindings)])
           (emit-expr (cadr b) sp env)
@@ -302,8 +311,5 @@
 
 (define (code_gen program)
   (define C (lexParse program))
-  (if (null? (cadr C))
-    (main (list (car C)))
-    (main (list (car C) (caadr C)))
-  )
+  (main C)
 )
