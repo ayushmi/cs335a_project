@@ -283,5 +283,8 @@
 
 (define (code_gen program)
   (define C (lexParse program))
-  (main (list (car C) (caadr C)))
+  (if (null? (cadr C))
+    (main (list (car C)))
+    (main (list (car C) (caadr C)))
+  )
 )
