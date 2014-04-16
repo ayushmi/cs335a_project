@@ -20,7 +20,7 @@
   (list 'const (car (cdr expr)))
 )
 
-;;; var
+;;;var
 
 (define parse-var
   (lambda (sexpr)
@@ -52,7 +52,7 @@
     (cond ((pair? (cadr sexpr)) (parse (expand-mit sexpr)))
           (else (list 'define (parse (cadr sexpr)) (parse (caddr sexpr)))))))
 
-
+;;convert to lambda form of function definition;;
 (define expand-mit
   (lambda (sexpr)
     `(define ,(caadr sexpr) (lambda ,(cdadr sexpr) ,@(cddr sexpr)))))
@@ -162,14 +162,21 @@
   (lambda (sexpr)
     (and (pair? sexpr)(equal? (car sexpr) 'begin)(not (null? (cdr sexpr))))))
 
+(define parse-applic-args
+  (lambda (sexpr)
+    (if (null? sexpr)
+        sexpr
+        (cons (parse (car sexpr)) (parse-applic-args (cdr sexpr))))))
+
+
 (define parse-begin
   (lambda (sexpr)
-    (list 'seq (parse-applic-args (cdr sexpr)))))
+    (parse-applic-args (cdr sexpr))))
 
 (define beginify
   (lambda (sexpr)
     (cond ((null? sexpr) void-object)
-          ((null? (cdr sexpr)) (car sexpr))
+          ;((null? (cdr sexpr)) (car sexpr))
           (else `(begin ,@sexpr) ))))
 
 (define void-object (if #f #t))
@@ -225,6 +232,24 @@
     )
 )
 
+;;=;;
+(define (=? expr)
+  (and (pair? expr)(equal? (car expr) '=))
+
+)
+
+
+(define parse=
+    (lambda (s)
+        (if (equal? s '(=))
+            '(const 1)
+            (list '= (parse (cadr s))
+              (parse= (append '(=) (cddr s)))
+            )
+        )
+    )
+)
+
 ;;or;;
 (define (or? expr)
   (and (pair? expr)(equal? (car expr) 'or))
@@ -275,13 +300,13 @@
     (cond ((null? (cddr sexpr)) `(if ,(parse (car sexpr)) , (parse (cadr sexpr)), '(const 0)))
            (else `(if ,(parse (car sexpr)) ,(expand-and-helper (cdr sexpr)), '(const 0))
            ))))
-;;Function Call;;
-(define (funccall? expr)
-  '()
-)
 
-(define (parse-funccall expr)
-  '()
+;;function call;
+(define (functionCall? expr)
+  (and (pair? expr) (not (list? (car expr))) (non-reserved (car expr) reserved) (list? (cdr expr)))
+)
+(define (parse-functionCall expr)
+  (list 'apply (parse (car expr)) (map parse (cdr expr)))
 )
 
 ;;parse function;;
@@ -294,6 +319,7 @@
    ((+? expr) (parse+ expr))
    ((-? expr) (parse- expr))
    ((*? expr) (parse* expr))
+   ((=? expr) (parse= expr))
    ((var? expr) (parse-var expr))
    ((define? expr) (parse-define expr))
    ((or? expr) (parse-or expr))
@@ -304,20 +330,21 @@
    ((ifelse? expr) (parse-ifelse expr))
    ((cond? expr) (expand-cond expr))
    ((display? expr) (parse-display expr))
-   ((funccall? expr) (parse-funccall expr))
+   ((functionCall? expr) (parse-functionCall expr))
    (else (display "Doesn't fit any category"))
   )
 )
 
+
 ;;parse program;;
 (define (parse-program in out)
   (cond
-      ((null? in) out)
-      (else (append (append out (list (parse (car in))))
-          (parse-program (cdr in) out))
-        )
-  )
+    ((null? in) out)
+    (else (append (append out (list (parse (car in)))) (parse-program (cdr in) out))
+          )
+    )
 )
+
 ;;Test Function ;;
 (define (lexParse program)
     (parse-program (tokens->sexprs (tokens program)) '())
