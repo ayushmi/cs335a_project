@@ -146,14 +146,20 @@
                                                                                                                        (and (pair? x)
                                                                                                                             (= (length x) 2)))
                                                                                                                      (cadr sexpr)))))))
-(define expand-let
- (lambda (sexpr)
-   (let ((args (map car (cadr sexpr)))
-         (vals (map cadr (cadr sexpr)))
-         (body (cddr sexpr)))
-     (cond ((and (null? args) (null? vals)) `((lambda ,args ,@body) ))
-           ((and (not (null? args)) (not (null? vals))) `((lambda ,args ,@body) ,@vals ))
-           (else "error")))))
+(define (expand-let expr)
+    (parse-program (list (list 'define (list 'letFunc (car (caadr A)) (caadr (cadr A))) (caddr A)) `(letFunc, (cadar (cdadr A)), (cadar (cadr A)))) '())
+)
+
+
+;(define expand-let
+; (lambda (sexpr)
+;   (let ((args (map car (cadr sexpr)))
+;         (vals (map cadr (cadr sexpr)))
+;         (body (cddr sexpr)))
+;     (cond ((and (null? args) (null? vals)) `((lambda ,args ,@body) ))
+;           ((and (not (null? args)) (not (null? vals))) `((lambda ,args ,@body) ,@vals ))
+;           (else "error")))))
+
 
 
 ;;;begin
@@ -274,7 +280,7 @@
 (define parse-or
     (lambda (s)
         (if (equal? s '(or))
-            (parse '#f)
+            (parse '0)
             (list 'or (parse (cadr s))
               (parse-or (append '(or) (cddr s)))
             )
