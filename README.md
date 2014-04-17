@@ -17,17 +17,17 @@ test#1
 (display (+ 1 -2))
 
 test#6
-(if 1 (begin (define x 2) (display x))) (if 1 (begin (define x 4) (display x)))
+(if 1 (begin (define x 2) (display x)) 2) (if 1 (begin (define x 4) (display x)) 2)
 
 test#5
 (define x 15)
-(if 
-	(> x 5) 
+(if
+	(> x 5)
 	(
-		if (< x 10) 
-		(display \"between 5 and 10\") 
+		if (< x 10)
+		(display \"between 5 and 10\")
 		(display \">10\")
-	) 
+	)
 	(display \"<5\")
 )
 
@@ -56,13 +56,15 @@ Test Cases
 (display (if (and 1 0) x (+ x 1)))
 (if (or 1 0) x (+ x 1))
 
+
 2.
-(define (f n) (if (- n 0) 0  (+ 1 (f (- n 1)) )))
-(f 5)
+(define (f n b) (if (- n 0 ) 0  (+ 1 (f (- n 1) 1) )))
+(f 5 1)
+
 
 3.
 (let ((x 1) (y 2))
   (+ x y))
 
 4.
-(define (add x y) ((+ x y))) (add 4 5)
+(define (add x y) (+ x y)) (display (add 4 5))
